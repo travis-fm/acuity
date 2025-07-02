@@ -1,4 +1,5 @@
 use glob::glob;
+use ratatui::layout::{Flex, Layout};
 use std::fs::read_to_string;
 use std::io::{self};
 use std::path::{Path, PathBuf};
@@ -188,6 +189,8 @@ impl App {
 
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        let layout = Layout::default().flex(Flex::Center);
+        let [main] = layout.areas(area);
         let title = Line::from("Acumen Hardware Monitor");
         let version = Line::from("1.23.56");
         let block = Block::bordered()
@@ -200,8 +203,7 @@ impl Widget for &App {
         Paragraph::new(module_blocks)
             .centered()
             .block(block)
-            .render(area, buf);
-            
+            .render(main,buf);
     }
 }
 
