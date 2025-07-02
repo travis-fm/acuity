@@ -5,6 +5,18 @@ use std::path::{Path, PathBuf};
 use std::thread::sleep;
 use std::time::Duration;
 
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
+use ratatui::{
+    buffer::Buffer,
+    layout::Rect,
+    style::Stylize,
+    symbols::border,
+    text::{Line, Text},
+    widgets::{Block, Paragraph, Widget},
+    DefaultTerminal,
+    Frame
+};
+
 #[derive(PartialEq, Debug)]
 enum SensorType {
     Chip,
@@ -131,9 +143,76 @@ impl HwMon {
     }
 }
 
-fn main() {
-    let mut modules: Vec<HwMon> = vec![];
+#[derive(Debug, Default)]
+struct App {
+    counter: u8,
+    exit: bool,
+}
 
+impl App {
+    fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+        while !self.exit {
+            terminal.draw(|f| self.draw(f))?;
+            self.handle_events()?;
+        }
+
+        Ok(())
+    }
+
+    fn draw(&self, frame: &mut Frame) {
+        frame.render_widget(self, frame.area());
+    }
+
+    fn exit(&mut self) {
+        self.exit = true;
+    }
+
+    fn handle_key_event(&mut self, key_event: KeyEvent) {
+        match key_event.code {
+            KeyCode::Char('q') => self.exit(),
+            _ => {}
+        }
+    }
+
+    fn handle_events(&mut self) -> io::Result<()> {
+        match event::read()? {
+            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
+                self.handle_key_event(key_event)
+            }
+
+            _ => {}
+        };
+        Ok(())
+    }
+}
+
+impl Widget for &App {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let title = Line::from("Acumen Hardware Monitor");
+        let version = Line::from("1.23.56");
+        let block = Block::bordered()
+            .title(title.centered())
+            .title_bottom(version.right_aligned())
+            .border_set(border::THICK);
+
+        let module_blocks = Text::from("Module blocks should go here.");
+
+        Paragraph::new(module_blocks)
+            .centered()
+            .block(block)
+            .render(area, buf);
+            
+    }
+}
+
+fn main() -> io::Result<()> {
+    let mut modules: Vec<HwMon> = vec![];
+    let mut terminal = ratatui::init();
+    let app_result = App::default().run(&mut terminal);
+
+    ratatui::restore();
+    app_result
+    /*
     match glob("/sys/class/hwmon/hwmon*") {
         Ok(paths) => {
             for path in paths.flatten() {
@@ -155,4 +234,5 @@ fn main() {
 
         sleep(Duration::from_secs(5));
     }
+    */
 }
