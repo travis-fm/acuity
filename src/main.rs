@@ -71,7 +71,7 @@ impl Sensor {
 impl HwMon {
     fn new(hwmon_path: PathBuf) -> io::Result<Self> {
         let hwmon = HwMon {
-            display_name: read_to_string(hwmon_path.join("name"))?,
+            display_name: read_to_string(hwmon_path.join("name"))?.trim_ascii(),
             sensors: HwMon::init_sensors(&hwmon_path)?,
             hwmon_path,
         };
@@ -115,7 +115,7 @@ impl HwMon {
 
     fn update_sensors(&mut self) {
         for sensor in &mut self.sensors {
-            sensor.value = read_to_string(&sensor.input_file_path).unwrap_or_default().parse().unwrap_or_default();
+            sensor.value = read_to_string(&sensor.input_file_path).unwrap_or_default().trim_ascii().parse::<i32>().unwrap_or_default();
         }
     }
 }
@@ -124,7 +124,7 @@ fn main() {
     let mut modules: Vec<HwMon> = vec![];
     //let module = HwMon::new(PathBuf::from("/sys/modules/hwmon/hwmon0"));
 
-    match glob("/sys/modules/hwmon/*") {
+    match glob("/sys/class/hwmon/hwmon*") {
         Ok(paths) => {
             for path in paths.flatten() {
                 if let Ok(module) = HwMon::new(path) {
