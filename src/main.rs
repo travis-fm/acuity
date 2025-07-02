@@ -1,5 +1,5 @@
 use glob::glob;
-use ratatui::layout::{Flex, Layout};
+use ratatui::layout::{Constraint, Direction, Flex, Layout};
 use std::fs::read_to_string;
 use std::io::{self};
 use std::path::{Path, PathBuf};
@@ -83,6 +83,22 @@ impl Sensor {
         }
     }
 }
+impl Widget for &Sensor {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let row = Layout::default().direction(Direction::Horizontal).constraints(vec![
+            Constraint::Percentage(75),
+            Constraint::Percentage(25),
+        ]).split(area);
+
+        let render_name = Line::from(self.display_name.as_str());
+        let render_curr_value = Line::from(self.value.to_string());
+
+        Paragraph::new(render_name)
+            .render(row[0], buf);
+        Paragraph::new(render_curr_value)
+            .render(row[1], buf);
+    }
+}
 
 impl HwMon {
     fn new(hwmon_path: PathBuf) -> io::Result<Self> {
@@ -143,11 +159,23 @@ impl HwMon {
         }
     }
 }
+impl Widget for &HwMon {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let module_box = Block::bordered()
+            .border_set(border::PLAIN);
+
+        Paragraph::new(Text::from(self.display_name.as_str()))
+            .centered()
+            .block(module_box)
+            .render(area, buf);
+    }
+}
 
 #[derive(Debug, Default)]
 struct App {
     counter: u8,
     exit: bool,
+    modules: Vec<HwMon>
 }
 
 impl App {
@@ -189,8 +217,8 @@ impl App {
 
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let layout = Layout::default().flex(Flex::Center);
-        let [main] = layout.areas(area);
+        //let layout = Layout::default().flex(Flex::Center);
+        //let main = layout.split(area);
         let title = Line::from("Acumen Hardware Monitor");
         let version = Line::from("1.23.56");
         let block = Block::bordered()
@@ -203,7 +231,7 @@ impl Widget for &App {
         Paragraph::new(module_blocks)
             .centered()
             .block(block)
-            .render(main,buf);
+            .render(area, buf);
     }
 }
 
