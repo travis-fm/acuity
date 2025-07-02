@@ -71,7 +71,7 @@ impl Sensor {
 impl HwMon {
     fn new(hwmon_path: PathBuf) -> io::Result<Self> {
         let hwmon = HwMon {
-            display_name: read_to_string(hwmon_path.join("name"))?.trim_ascii(),
+            display_name: read_to_string(hwmon_path.join("name"))?.trim_ascii().to_string(),
             sensors: HwMon::init_sensors(&hwmon_path)?,
             hwmon_path,
         };
