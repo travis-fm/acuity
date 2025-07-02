@@ -1,7 +1,6 @@
 use glob::glob;
-use std::fs::{DirEntry, read_to_string};
-use std::io::{self, Error};
-use std::iter::Inspect;
+use std::fs::{read_to_string};
+use std::io::{self};
 use std::path::{Path, PathBuf};
 use std::thread::sleep;
 use std::time::Duration;
