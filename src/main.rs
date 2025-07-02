@@ -122,7 +122,6 @@ impl HwMon {
 
 fn main() {
     let mut modules: Vec<HwMon> = vec![];
-    //let module = HwMon::new(PathBuf::from("/sys/modules/hwmon/hwmon0"));
 
     match glob("/sys/class/hwmon/hwmon*") {
         Ok(paths) => {
