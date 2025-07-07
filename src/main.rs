@@ -217,37 +217,46 @@ impl App {
 
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        //let layout = Layout::default().flex(Flex::Center);
-        //let main = layout.split(area);
+        let head_foot_size = 16;
+
+        let main_area_size = area.height - (head_foot_size * 2);
+        let main_window_layout = Layout::vertical([
+            Constraint::Max(head_foot_size),
+            Constraint::Length(main_area_size),
+            Constraint::Max(head_foot_size),
+        ]);
+
+        let module_col_size = 100 / if self.modules.len() > 0 { self.modules.len() } else { 1 };
+        let module_cols = (0..self.modules.len())
+            .map(|_| Constraint::Percentage(module_col_size as u16));
+        let module_layout = Layout::horizontal(module_cols).spacing(1).split(area);
+
         let title = Line::from("Acumen Hardware Monitor");
-        let version = Line::from("1.23.56");
-        let block = Block::bordered()
+        let version = Line::from("v0.0.1-dev");
+        let main_screen_block = Block::bordered()
             .title(title.centered())
             .title_bottom(version.right_aligned())
             .border_set(border::THICK);
 
         let module_blocks = Text::from("Module blocks should go here.");
 
+        
+
         Paragraph::new(module_blocks)
             .centered()
-            .block(block)
+            .block(main_screen_block)
             .render(area, buf);
     }
 }
 
 fn main() -> io::Result<()> {
-    let mut modules: Vec<HwMon> = vec![];
-    let mut terminal = ratatui::init();
-    let app_result = App::default().run(&mut terminal);
-
-    ratatui::restore();
-    app_result
-    /*
+    let mut app = App::default();
+    
     match glob("/sys/class/hwmon/hwmon*") {
         Ok(paths) => {
             for path in paths.flatten() {
                 if let Ok(module) = HwMon::new(path) {
-                    modules.push(module);
+                    app.modules.push(module);
                 }
             }
         }
@@ -256,6 +265,12 @@ fn main() -> io::Result<()> {
         }
     }
 
+    let mut terminal = ratatui::init();
+    let app_result = app.run(&mut terminal);
+    ratatui::restore();
+    app_result
+
+    /*
     loop {
         for module in &mut modules {
             module.update_sensors();
