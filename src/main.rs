@@ -217,35 +217,31 @@ impl App {
 
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let head_foot_size = 16;
+        let app_title = Line::from("Acumen Hardware Monitor");
+        let app_version = Line::from("v0.0.1-dev");
+        let app_block = Block::bordered()
+            .title(app_title.centered())
+            .title_bottom(app_version.right_aligned())
+            .border_set(border::THICK);
 
-        let main_area_size = area.height - (head_foot_size * 2);
-        let main_window_layout = Layout::vertical([
-            Constraint::Max(head_foot_size),
+        let header_footer_size = 16;
+        let main_area_size = app_block.inner(area).height - (header_footer_size * 2);
+        let [header_area, main_area, footer_area] = Layout::vertical([
+            Constraint::Max(header_footer_size),
             Constraint::Length(main_area_size),
-            Constraint::Max(head_foot_size),
-        ]);
+            Constraint::Max(header_footer_size),
+        ]).areas(app_block.inner(area));
 
         let module_col_size = 100 / if self.modules.len() > 0 { self.modules.len() } else { 1 };
         let module_cols = (0..self.modules.len())
             .map(|_| Constraint::Percentage(module_col_size as u16));
-        let module_layout = Layout::horizontal(module_cols).spacing(1).split(area);
+        let module_layout = Layout::horizontal(module_cols).spacing(1).split(main_area);
 
-        let title = Line::from("Acumen Hardware Monitor");
-        let version = Line::from("v0.0.1-dev");
-        let main_screen_block = Block::bordered()
-            .title(title.centered())
-            .title_bottom(version.right_aligned())
-            .border_set(border::THICK);
+        app_block.render(area, buf);
 
-        let module_blocks = Text::from("Module blocks should go here.");
-
-        
-
-        Paragraph::new(module_blocks)
-            .centered()
-            .block(main_screen_block)
-            .render(area, buf);
+        for i in 0..self.modules.len() {
+            self.modules[i].render(module_layout[i], buf);
+        }
     }
 }
 
