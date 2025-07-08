@@ -4,7 +4,7 @@ use std::fs::read_to_string;
 use std::io::{self};
 use std::path::{Path, PathBuf};
 use std::thread::sleep;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
@@ -179,18 +179,20 @@ impl Widget for &HwMon {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct App {
     exit: bool,
-    modules: Vec<HwMon>
+    modules: Vec<HwMon>,
+    sensor_refresh_interval: Duration,
+    app_frame_rate: Duration,
+    last_sensor_refresh: Instant,
+    last_app_refresh: Instant,
 }
 
 impl App {
     fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         while !self.exit {
-            for module in &mut self.modules {
-                module.update_sensors();
-            }
+            self.update_modules();
             terminal.draw(|f| self.draw(f))?;
             self.handle_events()?;
         }
@@ -198,8 +200,20 @@ impl App {
         Ok(())
     }
 
+    fn update_modules(&mut self) {
+        if Instant::now() >= self.last_sensor_refresh + self.sensor_refresh_interval {
+            for module in &mut self.modules {
+                module.update_sensors();
+            }
+
+            self.last_sensor_refresh = Instant::now();
+        }
+    }
+
     fn draw(&self, frame: &mut Frame) {
-        frame.render_widget(self, frame.area());
+        if Instant::now() >= self.last_app_refresh + self.app_frame_rate {
+            frame.render_widget(self, frame.area());
+        }
     }
 
     fn exit(&mut self) {
@@ -214,13 +228,16 @@ impl App {
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
-        match event::read()? {
-            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                self.handle_key_event(key_event)
-            }
+        if event::poll(Duration::from_secs(0))? {
+            match event::read()? {
+                Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
+                    self.handle_key_event(key_event)
+                }
 
-            _ => {}
-        };
+                _ => {}
+            };
+        }
+        
         Ok(())
     }
 }
@@ -261,7 +278,14 @@ impl Widget for &App {
 }
 
 fn main() -> io::Result<()> {
-    let mut app = App::default();
+    let mut app = App {
+        exit: false,
+        modules: vec![],
+        sensor_refresh_interval: Duration::from_millis(1000),
+        app_frame_rate: Duration::from_secs_f64(1.0/60.0),
+        last_sensor_refresh: Instant::now(),
+        last_app_refresh: Instant::now()
+    };
     
     match glob("/sys/class/hwmon/hwmon*") {
         Ok(paths) => {
