@@ -173,7 +173,7 @@ impl Widget for &HwMon {
             .block(Block::bordered())
             .render(layout[0], buf);
 
-        for i in 0..layout.len() {
+        for i in 0..self.sensors.len() {
             self.sensors[i].render(layout[i+1], buf);
         }
     }
