@@ -164,7 +164,7 @@ impl Widget for &HwMon {
         let module_box = Block::bordered()
             .border_set(border::PLAIN);
         let mut constraints = vec![Constraint::Max(16)];
-        self.sensors.iter().for_each(|_| constraints.push(Constraint::Percentage(0)));
+        self.sensors.iter().for_each(|_| constraints.push(Constraint::Fill(1)));
 
         let layout = Layout::vertical(constraints).split(module_box.inner(area));
 
