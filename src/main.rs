@@ -1,5 +1,5 @@
 use glob::glob;
-use ratatui::layout::{Constraint, Direction, Flex, Layout};
+use ratatui::layout::{Alignment, Constraint, Direction, Flex, Layout};
 use std::fs::read_to_string;
 use std::io::{self};
 use std::path::{Path, PathBuf};
@@ -85,18 +85,20 @@ impl Sensor {
 }
 impl Widget for &Sensor {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let row = Layout::default().direction(Direction::Horizontal).constraints(vec![
+        let [name_area, value_area] = Layout::horizontal([
             Constraint::Percentage(25),
             Constraint::Percentage(75),
-        ]).split(area);
+        ]).areas(area);
 
         let render_name = Line::from(self.display_name.as_str());
         let render_curr_value = Line::from(self.value.to_string());
 
         Paragraph::new(render_name)
-            .render(row[0], buf);
+            .alignment(Alignment::Left)
+            .render(name_area, buf);
         Paragraph::new(render_curr_value)
-            .render(row[1], buf);
+            .alignment(Alignment::Right)
+            .render(value_area, buf);
     }
 }
 
@@ -161,20 +163,17 @@ impl HwMon {
 }
 impl Widget for &HwMon {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let module_box = Block::bordered()
-            .border_set(border::PLAIN);
-        let mut constraints = vec![Constraint::Max(16)];
+        let module_name = Line::from(self.display_name.as_str());
+        let module_block = Block::bordered()
+            .border_set(border::PLAIN)
+            .title(module_name.centered());
+        let mut constraints = vec![];
         self.sensors.iter().for_each(|_| constraints.push(Constraint::Fill(1)));
 
-        let layout = Layout::vertical(constraints).split(module_box.inner(area));
-
-        Paragraph::new(Text::from(self.display_name.as_str()))
-            .centered()
-            .block(Block::bordered())
-            .render(layout[0], buf);
+        let layout = Layout::vertical(constraints).split(module_block.inner(area));
 
         for i in 0..self.sensors.len() {
-            self.sensors[i].render(layout[i+1], buf);
+            self.sensors[i].render(layout[i], buf);
         }
     }
 }
@@ -188,6 +187,9 @@ struct App {
 impl App {
     fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         while !self.exit {
+            for module in &mut self.modules {
+                module.update_sensors();
+            }
             terminal.draw(|f| self.draw(f))?;
             self.handle_events()?;
         }
@@ -231,12 +233,17 @@ impl Widget for &App {
             .title_bottom(app_version.right_aligned())
             .border_set(border::THICK);
 
+        /*
         let header_footer_size = 16;
         let main_area_size = app_block.inner(area).height - (header_footer_size * 2);
         let [header_area, main_area, footer_area] = Layout::vertical([
             Constraint::Max(header_footer_size),
             Constraint::Length(main_area_size),
             Constraint::Max(header_footer_size),
+        ]).areas(app_block.inner(area));
+        */
+        let [main_area] = Layout::vertical([
+            Constraint::Fill(1)
         ]).areas(app_block.inner(area));
 
         let module_col_size = 100 / if self.modules.len() > 0 { self.modules.len() } else { 1 };
