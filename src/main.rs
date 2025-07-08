@@ -172,6 +172,7 @@ impl Widget for &HwMon {
 
         let layout = Layout::vertical(constraints).split(module_block.inner(area));
 
+        module_block.render(area, buf);
         for i in 0..self.sensors.len() {
             self.sensors[i].render(layout[i], buf);
         }
