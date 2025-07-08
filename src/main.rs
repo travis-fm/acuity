@@ -86,8 +86,8 @@ impl Sensor {
 impl Widget for &Sensor {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let row = Layout::default().direction(Direction::Horizontal).constraints(vec![
-            Constraint::Percentage(75),
             Constraint::Percentage(25),
+            Constraint::Percentage(75),
         ]).split(area);
 
         let render_name = Line::from(self.display_name.as_str());
@@ -163,17 +163,24 @@ impl Widget for &HwMon {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let module_box = Block::bordered()
             .border_set(border::PLAIN);
+        let mut constraints = vec![Constraint::Max(16)];
+        self.sensors.iter().for_each(|_| constraints.push(Constraint::Percentage(0)));
+
+        let layout = Layout::vertical(constraints).split(module_box.inner(area));
 
         Paragraph::new(Text::from(self.display_name.as_str()))
             .centered()
-            .block(module_box)
-            .render(area, buf);
+            .block(Block::bordered())
+            .render(layout[0], buf);
+
+        for i in 1..layout.len() {
+            self.sensors[i].render(layout[i], buf);
+        }
     }
 }
 
 #[derive(Debug, Default)]
 struct App {
-    counter: u8,
     exit: bool,
     modules: Vec<HwMon>
 }
