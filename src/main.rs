@@ -186,7 +186,6 @@ struct App {
     sensor_refresh_interval: Duration,
     app_frame_rate: Duration,
     last_sensor_refresh: Instant,
-    last_app_refresh: Instant,
 }
 
 impl App {
@@ -211,9 +210,7 @@ impl App {
     }
 
     fn draw(&self, frame: &mut Frame) {
-        if Instant::now() >= self.last_app_refresh + self.app_frame_rate {
-            frame.render_widget(self, frame.area());
-        }
+        frame.render_widget(self, frame.area());
     }
 
     fn exit(&mut self) {
@@ -284,7 +281,6 @@ fn main() -> io::Result<()> {
         sensor_refresh_interval: Duration::from_millis(1000),
         app_frame_rate: Duration::from_secs_f64(1.0/60.0),
         last_sensor_refresh: Instant::now(),
-        last_app_refresh: Instant::now()
     };
     
     match glob("/sys/class/hwmon/hwmon*") {
