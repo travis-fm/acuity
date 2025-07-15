@@ -9,7 +9,6 @@ use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::symbols::border;
 use ratatui::text::Line;
 use ratatui::widgets::{Block, Widget};
-use ratatui::{Frame};
 
 use crate::hwmodule::hwmonitor::HWMonitor;
 
