@@ -11,7 +11,7 @@ use ratatui::text::Line;
 use ratatui::widgets::{Block, Widget};
 use ratatui::{Frame};
 
-use crate::hwmodule::hwmon::HWMonitor;
+use crate::hwmodule::hwmonitor::HWMonitor;
 
 #[derive(Debug)]
 pub struct App {
@@ -29,6 +29,8 @@ impl App {
             sensor_refresh_interval: Duration::from_millis(1000),
             last_sensor_refresh: Instant::now()
         };
+
+        app.load_modules();
 
         let mut terminal = ratatui::init();
         while !app.exit {

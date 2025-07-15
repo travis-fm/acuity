@@ -76,11 +76,11 @@ impl HWMonitor {
     }
 }
 
-impl HWModule for HWMonitor {
+impl HWModule for &HWMonitor {
 
 }
 
-impl Widget for HWMonitor {
+impl Widget for &HWMonitor {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let module_name = Line::from(self.display_name.as_str());
         let module_block = Block::bordered()

@@ -23,9 +23,9 @@ use ratatui::{
 };
 
 use crate::app::App;
-use crate::hwmodule::hwmon::HWMonitor;
+use crate::hwmodule::hwmonitor::HWMonitor;
 
 fn main() -> io::Result<()> {
-    
+
     App::run()
 }
