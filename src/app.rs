@@ -55,6 +55,9 @@ impl App {
         
         if let Some(options) = options {
             for option in options {
+                // Expecting to add more app options later on. Leaving default at bottom for future implementations.
+                #[allow(clippy::single_match)]
+                #[allow(unreachable_patterns)]
                 match option {
                     AppOptions::SensorRefreshInterval(interval) => sensor_refresh_interval = interval,
                     _ => {}
@@ -65,8 +68,8 @@ impl App {
         App {
             exit,
             modules,
-            last_sensor_refresh,
             sensor_refresh_interval,
+            last_sensor_refresh,
         }
     }
 
@@ -104,6 +107,8 @@ impl App {
     }
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {
+        // Expecting to add more keybindings later on. Leaving default at bottom for future implementations.
+        #[allow(clippy::single_match)]
         match key_event.code {
             KeyCode::Char('q') => self.exit(),
             _ => {}
@@ -114,11 +119,11 @@ impl App {
         if event::poll(Duration::from_secs(0))? {
             match event::read()? {
                 Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                    self.handle_key_event(key_event)
+                    self.handle_key_event(key_event);
                 }
 
                 _ => {}
-            };
+            }
         }
         
         Ok(())
@@ -147,9 +152,13 @@ impl Widget for &App {
             Constraint::Fill(1)
         ]).areas(app_block.inner(area));
 
-        let module_col_size = 100 / if !self.modules.is_empty() { self.modules.len() } else { 1 };
+        // This is temporary while prototyping. Should smartly generate module cells later when more are added.
+        // Ignore cast truncation for now.
+        let module_col_size = 100 / if self.modules.is_empty() { 1 } else { self.modules.len() };
+        #[allow(clippy::cast_possible_truncation)]
         let module_cols = (0..self.modules.len())
             .map(|_| Constraint::Percentage(module_col_size as u16));
+
         let module_layout = Layout::horizontal(module_cols).spacing(1).split(main_area);
 
         app_block.render(area, buf);

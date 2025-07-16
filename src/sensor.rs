@@ -32,7 +32,7 @@ impl Sensor {
             .to_str()
             .unwrap_or_default()
             .to_owned();
-        let display_name = file_name.split("_").next().unwrap_or_default().to_owned();
+        let display_name = file_name.split('_').next().unwrap_or_default().to_owned();
 
         Sensor {
             sensor_type: Sensor::parse_type_from_file(&display_name),

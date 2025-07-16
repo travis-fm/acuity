@@ -1,4 +1,4 @@
-use super::*;
+use super::{HWModule, Sensor};
 use std::fs::read_to_string;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -32,10 +32,7 @@ impl HWMonitor {
     pub fn init_sensors(hwmon_path: &Path) -> io::Result<Vec<Sensor>> {
         let mut sensors: Vec<Sensor> = vec![];
 
-        let string_parse_err = io::Error::other(format!(
-            "Could not parse string from path: {:#?}",
-            hwmon_path
-        ));
+        let string_parse_err = io::Error::other(format!("Could not parse string from path: {}", hwmon_path.display()));
         let glob_path = hwmon_path.to_str().ok_or(string_parse_err)?.to_owned() + "/*_input";
 
         match glob(&glob_path) {
@@ -45,9 +42,7 @@ impl HWMonitor {
                         Ok(file) => {
                             let sensor_exists = sensors.iter().any(|s| s.input_file_path == file);
 
-                            if sensor_exists {
-                                continue;
-                            } else {
+                            if !sensor_exists {
                                 sensors.push(Sensor::new(file));
                             }
                         }
