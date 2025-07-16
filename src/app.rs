@@ -147,7 +147,7 @@ impl Widget for &App {
             Constraint::Fill(1)
         ]).areas(app_block.inner(area));
 
-        let module_col_size = 100 / if self.modules.len() > 0 { self.modules.len() } else { 1 };
+        let module_col_size = 100 / if !self.modules.is_empty() { self.modules.len() } else { 1 };
         let module_cols = (0..self.modules.len())
             .map(|_| Constraint::Percentage(module_col_size as u16));
         let module_layout = Layout::horizontal(module_cols).spacing(1).split(main_area);
