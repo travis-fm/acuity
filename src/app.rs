@@ -70,7 +70,7 @@ impl App {
         }
     }
 
-    fn draw(&mut self, frame: &mut Frame) {
+    fn draw(&self, frame: &mut Frame) {
         frame.render_widget(self, frame.area());
     }
 
@@ -91,7 +91,7 @@ impl App {
 
     fn update_modules(&mut self) {
         if Instant::now() >= self.last_sensor_refresh + self.sensor_refresh_interval {
-            for mut module in &mut self.modules {
+            for module in &mut self.modules {
                 module.update_sensors();
             }
 
@@ -125,7 +125,7 @@ impl App {
     }
 }
 
-impl Widget for &mut App {
+impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let app_title = Line::from("Acumen Hardware Monitor");
         let app_version = Line::from("v0.0.1-dev");

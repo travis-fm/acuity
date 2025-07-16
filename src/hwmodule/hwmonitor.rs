@@ -66,7 +66,7 @@ impl HWMonitor {
     }
 }
 
-impl HWModule for &mut HWMonitor {
+impl HWModule for HWMonitor {
     fn update_sensors(&mut self) {
         for sensor in &mut self.sensors {
             sensor.value = read_to_string(&sensor.input_file_path)
@@ -78,7 +78,7 @@ impl HWModule for &mut HWMonitor {
     }
 }
 
-impl Widget for &mut HWMonitor {
+impl Widget for &HWMonitor {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let module_name = Line::from(self.display_name.as_str());
         let module_block = Block::bordered()
