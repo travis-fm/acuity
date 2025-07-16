@@ -7,5 +7,8 @@ use std::io;
 use crate::app::App;
 
 fn main() -> io::Result<()> {
-    App::run()
+    let mut app = App::new(None);
+    app.run()?;
+    
+    Ok(())
 }

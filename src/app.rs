@@ -9,8 +9,10 @@ use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::symbols::border;
 use ratatui::text::Line;
 use ratatui::widgets::{Block, Widget};
+use ratatui::Frame;
 
 use crate::hwmodule::hwmonitor::HWMonitor;
+use crate::hwmodule::HWModule;
 
 #[derive(Debug)]
 pub struct App {
@@ -20,22 +22,23 @@ pub struct App {
     last_sensor_refresh: Instant,
 }
 
+pub enum AppOptions {
+    SensorRefreshInterval(Duration),
+}
+
 impl App {
-    pub fn run() -> io::Result<()> {
-        let mut app = App {
-            exit: false,
-            modules: vec![],
-            sensor_refresh_interval: Duration::from_millis(1000),
-            last_sensor_refresh: Instant::now()
-        };
+    pub fn new(options: Option<Vec<AppOptions>>) -> Self {
+        Self::load_app_options_or_defaults(options)
+    }
 
-        app.load_modules();
-
+    pub fn run(&mut self) -> io::Result<()> {
         let mut terminal = ratatui::init();
-        while !app.exit {
-            app.update_modules();
-            terminal.draw(|f| f.render_widget(&app, f.area()))?;
-            app.handle_events()?;
+        self.load_hwmon_modules();
+
+        while !self.exit {
+            self.update_modules();
+            terminal.draw(|f| self.draw(f))?;
+            self.handle_events()?;
         }
 
         ratatui::restore();
@@ -43,7 +46,35 @@ impl App {
         Ok(())
     }
 
-    fn load_modules(&mut self) {
+    fn load_app_options_or_defaults(options: Option<Vec<AppOptions>>) -> App {
+        let exit = false;
+        let modules = vec![];
+        let last_sensor_refresh = Instant::now();
+
+        let mut sensor_refresh_interval = Duration::from_secs(1000);
+        
+        if let Some(options) = options {
+            for option in options {
+                match option {
+                    AppOptions::SensorRefreshInterval(interval) => sensor_refresh_interval = interval,
+                    _ => {}
+                }
+            }
+        }
+
+        App {
+            exit,
+            modules,
+            last_sensor_refresh,
+            sensor_refresh_interval,
+        }
+    }
+
+    fn draw(&mut self, frame: &mut Frame) {
+        frame.render_widget(self, frame.area());
+    }
+
+    fn load_hwmon_modules(&mut self) {
         match glob("/sys/class/hwmon/hwmon*") {
             Ok(paths) => {
                 for path in paths.flatten() {
@@ -60,7 +91,7 @@ impl App {
 
     fn update_modules(&mut self) {
         if Instant::now() >= self.last_sensor_refresh + self.sensor_refresh_interval {
-            for module in &mut self.modules {
+            for mut module in &mut self.modules {
                 module.update_sensors();
             }
 
@@ -94,7 +125,7 @@ impl App {
     }
 }
 
-impl Widget for &App {
+impl Widget for &mut App {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let app_title = Line::from("Acumen Hardware Monitor");
         let app_version = Line::from("v0.0.1-dev");
