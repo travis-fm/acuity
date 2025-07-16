@@ -51,7 +51,7 @@ impl App {
         let modules = vec![];
         let last_sensor_refresh = Instant::now();
 
-        let mut sensor_refresh_interval = Duration::from_secs(1000);
+        let mut sensor_refresh_interval = Duration::from_millis(1000);
         
         if let Some(options) = options {
             for option in options {
