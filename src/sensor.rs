@@ -1,6 +1,10 @@
-use std::path::PathBuf;
-
-use ratatui::{buffer::Buffer, layout::{Alignment, Constraint, Layout, Rect}, text::Line, widgets::{Paragraph, Widget}};
+use ratatui::{
+    buffer::Buffer,
+    layout::{Alignment, Constraint, Layout, Rect},
+    text::Line,
+    widgets::{Paragraph, Widget},
+};
+use uuid::Uuid;
 
 #[derive(PartialEq, Debug)]
 pub enum SensorType {
@@ -17,58 +21,36 @@ pub enum SensorType {
 
 #[derive(Debug)]
 pub struct Sensor {
-    pub display_name: String,
-    pub file_name: String,
-    pub input_file_path: PathBuf,
+    pub name: String,
+    id: Uuid,
     pub sensor_type: SensorType,
     pub value: i32,
 }
 
 impl Sensor {
-    pub fn new(value_path: PathBuf) -> Self {
-        let file_name = value_path
-            .file_name()
-            .unwrap_or_default()
-            .to_str()
-            .unwrap_or_default()
-            .to_owned();
-        let display_name = file_name.split('_').next().unwrap_or_default().to_owned();
-
+    #[must_use]
+    pub fn new(name: String, sensor_type: SensorType, value: i32) -> Self {
         Sensor {
-            sensor_type: Sensor::parse_type_from_file(&display_name),
-            file_name,
-            display_name,
-            value: 0,
-            input_file_path: value_path,
+            name,
+            id: Uuid::new_v4(),
+            sensor_type,
+            value,
         }
     }
 
-    fn parse_type_from_file(file_name: &str) -> SensorType {
-        match file_name.split(char::is_numeric).next() {
-            Some(name) => match name {
-                "chip" => SensorType::Chip,
-                "temp" => SensorType::Temperature,
-                "in" => SensorType::Voltage,
-                "curr" => SensorType::Current,
-                "power" => SensorType::Power,
-                "energy" => SensorType::Energy,
-                "humidity" => SensorType::Humidity,
-                "fan" => SensorType::Fan,
-                _ => SensorType::Unknown,
-            },
-            None => SensorType::Unknown,
-        }
+    #[must_use]
+    pub fn id(&self) -> String {
+        self.id.to_string()
     }
 }
 
 impl Widget for &Sensor {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let [name_area, value_area] = Layout::horizontal([
-            Constraint::Percentage(25),
-            Constraint::Percentage(75),
-        ]).areas(area);
+        let [name_area, value_area] =
+            Layout::horizontal([Constraint::Percentage(25), Constraint::Percentage(75)])
+                .areas(area);
 
-        let render_name = Line::from(self.display_name.as_str());
+        let render_name = Line::from(self.name.as_str());
         let render_curr_value = Line::from(self.value.to_string());
 
         Paragraph::new(render_name)

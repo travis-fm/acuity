@@ -1,16 +1,16 @@
 use std::io;
 use std::time::{Duration, Instant};
 
+use ratatui::Frame;
 use ratatui::buffer::Buffer;
 use ratatui::crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::symbols::border;
 use ratatui::text::Line;
 use ratatui::widgets::{Block, Widget};
-use ratatui::Frame;
 
+use crate::hwmodule::HWModule;
 use crate::hwmodule::hwmon::HWMon;
-use crate::hwmodule::{HWModule};
 
 pub struct App {
     exit: bool,
@@ -24,6 +24,7 @@ pub enum AppOptions {
 }
 
 impl App {
+    #[must_use]
     pub fn new(options: Option<Vec<AppOptions>>) -> Self {
         let mut app = App {
             exit: false,
@@ -59,7 +60,9 @@ impl App {
                 #[allow(clippy::single_match)]
                 #[allow(unreachable_patterns)]
                 match option {
-                    AppOptions::SensorRefreshInterval(interval) => self.sensor_refresh_interval = interval,
+                    AppOptions::SensorRefreshInterval(interval) => {
+                        self.sensor_refresh_interval = interval;
+                    }
                     _ => {}
                 }
             }
@@ -109,7 +112,7 @@ impl App {
                 _ => {}
             }
         }
-        
+
         Ok(())
     }
 }
@@ -133,16 +136,19 @@ impl Widget for &App {
         ]).areas(app_block.inner(area));
         */
 
-        let [main_area] = Layout::vertical([
-            Constraint::Fill(1)
-        ]).areas(app_block.inner(area));
+        let [main_area] = Layout::vertical([Constraint::Fill(1)]).areas(app_block.inner(area));
 
         // This is temporary while prototyping. Should smartly generate module cells later when more are added.
         // Ignore cast truncation for now.
-        let module_col_size = 100 / if self.modules.is_empty() { 1 } else { self.modules.len() };
+        let module_col_size = 100
+            / if self.modules.is_empty() {
+                1
+            } else {
+                self.modules.len()
+            };
         #[allow(clippy::cast_possible_truncation)]
-        let module_cols = (0..self.modules.len())
-            .map(|_| Constraint::Percentage(module_col_size as u16));
+        let module_cols =
+            (0..self.modules.len()).map(|_| Constraint::Percentage(module_col_size as u16));
 
         let module_layout = Layout::horizontal(module_cols).spacing(1).split(main_area);
         app_block.render(area, buf);

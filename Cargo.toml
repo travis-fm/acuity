@@ -13,3 +13,7 @@ pedantic = "warn"
 crossterm = "0.29.0"
 glob = "0.3.2"
 ratatui = "0.29.0"
+
+[dependencies.uuid]
+version = "1.17.0"
+features = ["v4"]
