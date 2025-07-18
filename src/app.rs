@@ -1,8 +1,6 @@
 use std::io;
 use std::time::{Duration, Instant};
 
-use glob::glob;
-
 use ratatui::buffer::Buffer;
 use ratatui::crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::layout::{Constraint, Layout, Rect};
@@ -11,13 +9,12 @@ use ratatui::text::Line;
 use ratatui::widgets::{Block, Widget};
 use ratatui::Frame;
 
-use crate::hwmodule::hwmonitor::HWMonitor;
-use crate::hwmodule::HWModule;
+use crate::hwmodule::hwmon::HWMon;
+use crate::hwmodule::{HWModule};
 
-#[derive(Debug)]
 pub struct App {
     exit: bool,
-    modules: Vec<HWMonitor>,
+    modules: Vec<HWModule>,
     sensor_refresh_interval: Duration,
     last_sensor_refresh: Instant,
 }
@@ -28,12 +25,21 @@ pub enum AppOptions {
 
 impl App {
     pub fn new(options: Option<Vec<AppOptions>>) -> Self {
-        Self::load_app_options_or_defaults(options)
+        let mut app = App {
+            exit: false,
+            modules: vec![],
+            sensor_refresh_interval: Duration::from_millis(1000),
+            last_sensor_refresh: Instant::now(),
+        };
+
+        app.load_options(options);
+
+        app
     }
 
     pub fn run(&mut self) -> io::Result<()> {
         let mut terminal = ratatui::init();
-        self.load_hwmon_modules();
+        self.init_modules();
 
         while !self.exit {
             self.update_modules();
@@ -46,30 +52,17 @@ impl App {
         Ok(())
     }
 
-    fn load_app_options_or_defaults(options: Option<Vec<AppOptions>>) -> App {
-        let exit = false;
-        let modules = vec![];
-        let last_sensor_refresh = Instant::now();
-
-        let mut sensor_refresh_interval = Duration::from_millis(1000);
-        
+    fn load_options(&mut self, options: Option<Vec<AppOptions>>) {
         if let Some(options) = options {
             for option in options {
                 // Expecting to add more app options later on. Leaving default at bottom for future implementations.
                 #[allow(clippy::single_match)]
                 #[allow(unreachable_patterns)]
                 match option {
-                    AppOptions::SensorRefreshInterval(interval) => sensor_refresh_interval = interval,
+                    AppOptions::SensorRefreshInterval(interval) => self.sensor_refresh_interval = interval,
                     _ => {}
                 }
             }
-        }
-
-        App {
-            exit,
-            modules,
-            sensor_refresh_interval,
-            last_sensor_refresh,
         }
     }
 
@@ -77,25 +70,16 @@ impl App {
         frame.render_widget(self, frame.area());
     }
 
-    fn load_hwmon_modules(&mut self) {
-        match glob("/sys/class/hwmon/hwmon*") {
-            Ok(paths) => {
-                for path in paths.flatten() {
-                    if let Ok(module) = HWMonitor::new(path) {
-                        self.modules.push(module);
-                    }
-                }
-            }
-            Err(..) => {
-                println!("Unable to read glob pattern");
-            }
+    fn init_modules(&mut self) {
+        for module in HWModule::init::<HWMon>() {
+            self.modules.push(module);
         }
     }
 
     fn update_modules(&mut self) {
         if Instant::now() >= self.last_sensor_refresh + self.sensor_refresh_interval {
             for module in &mut self.modules {
-                module.update_sensors();
+                module.poll_sensors();
             }
 
             self.last_sensor_refresh = Instant::now();
@@ -148,6 +132,7 @@ impl Widget for &App {
             Constraint::Max(header_footer_size),
         ]).areas(app_block.inner(area));
         */
+
         let [main_area] = Layout::vertical([
             Constraint::Fill(1)
         ]).areas(app_block.inner(area));
@@ -160,7 +145,6 @@ impl Widget for &App {
             .map(|_| Constraint::Percentage(module_col_size as u16));
 
         let module_layout = Layout::horizontal(module_cols).spacing(1).split(main_area);
-
         app_block.render(area, buf);
 
         for i in 0..self.modules.len() {

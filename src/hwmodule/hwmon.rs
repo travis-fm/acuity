@@ -1,28 +1,22 @@
-use super::{HWModule, Sensor};
+use super::{Module, Sensor};
 use std::fs::read_to_string;
 use std::io;
 use std::path::{Path, PathBuf};
 use glob::glob;
-use ratatui::buffer::Buffer;
-use ratatui::layout::{Constraint, Layout, Rect};
-use ratatui::symbols::border;
-use ratatui::text::Line;
-use ratatui::widgets::{Block, Widget};
 
-#[derive(Debug)]
-pub struct HWMonitor {
-    display_name: String,
+pub struct HWMon {
+    name: String,
     sensors: Vec<Sensor>,
     hwmon_path: PathBuf,
 }
 
-impl HWMonitor {
+impl HWMon {
     pub fn new(hwmon_path: PathBuf) -> io::Result<Self> {
-        let hwmon = HWMonitor {
-            display_name: read_to_string(hwmon_path.join("name"))?
+        let hwmon = HWMon {
+            name: read_to_string(hwmon_path.join("name"))?
                 .trim_ascii()
                 .to_string(),
-            sensors: HWMonitor::init_sensors(&hwmon_path)?,
+            sensors: HWMon::init_sensors(&hwmon_path)?,
             hwmon_path,
         };
 
@@ -61,8 +55,8 @@ impl HWMonitor {
     }
 }
 
-impl HWModule for HWMonitor {
-    fn update_sensors(&mut self) {
+impl Module for HWMon {
+    fn poll_sensors(&mut self) {
         for sensor in &mut self.sensors {
             sensor.value = read_to_string(&sensor.input_file_path)
                 .unwrap_or_default()
@@ -71,22 +65,41 @@ impl HWModule for HWMonitor {
                 .unwrap_or_default();
         }
     }
-}
 
-impl Widget for &HWMonitor {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        let module_name = Line::from(self.display_name.as_str());
-        let module_block = Block::bordered()
-            .border_set(border::PLAIN)
-            .title(module_name.centered());
-        let mut constraints = vec![];
-        self.sensors.iter().for_each(|_| constraints.push(Constraint::Fill(1)));
+    fn init() -> Vec<Self> {
+        let mut modules: Vec<Self> = vec![];
 
-        let layout = Layout::vertical(constraints).split(module_block.inner(area));
-
-        module_block.render(area, buf);
-        for i in 0..self.sensors.len() {
-            self.sensors[i].render(layout[i], buf);
+        match glob("/sys/class/hwmon/hwmon*") {
+            Ok(paths) => {
+                for path in paths.flatten() {
+                    let hwmon = HWMon {
+                        name: read_to_string(path.join("name"))
+                            .unwrap_or_default()
+                            .trim_ascii()
+                            .to_string(),
+                        sensors: HWMon::init_sensors(&path).unwrap_or_default(),
+                        hwmon_path: path,
+                    };  
+                    modules.push(hwmon);
+                }
+            }
+            Err(..) => {
+                println!("Unable to read glob pattern");
+            }
         }
+
+        modules
+    }
+
+    fn get_name(&self) -> String {
+        self.name.clone()
+    }
+
+    fn set_name(&mut self, name: String) {
+        self.name = name;
+    }
+
+    fn get_sensors(&self) -> Vec<Sensor> {
+        todo!();
     }
 }
