@@ -1,5 +1,6 @@
 pub mod hwmon;
 
+use async_trait::async_trait;
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
@@ -14,20 +15,21 @@ pub struct HWModule {
     module: Box<dyn Module>,
 }
 
+#[async_trait]
 pub trait Module {
-    fn init() -> Vec<Self>
+    async fn init() -> Vec<Self>
     where
         Self: Sized;
     fn name(&self) -> &str;
     fn set_name(&mut self, name: String);
     fn sensors(&self) -> Vec<&Sensor>;
-    fn poll_sensors(&mut self);
+    async fn poll_sensors(&mut self);
 }
 
 impl HWModule {
     #[must_use]
-    pub fn init<T: 'static + Module>() -> Vec<Self> {
-        let modules = T::init();
+    pub async fn init<T: Module + 'static>() -> Vec<Self> {
+        let modules = T::init().await;
         let mut hwmodules: Vec<HWModule> = vec![];
 
         for module in modules {
@@ -41,8 +43,8 @@ impl HWModule {
         hwmodules
     }
 
-    pub fn poll_sensors(&mut self) {
-        self.module.poll_sensors();
+    pub async fn poll_sensors(&mut self) {
+        self.module.poll_sensors().await;
     }
 
     #[must_use]

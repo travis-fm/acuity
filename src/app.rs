@@ -38,12 +38,14 @@ impl App {
         app
     }
 
-    pub fn run(&mut self) -> io::Result<()> {
+    /// # Errors
+    /// TODO
+    pub async fn run(&mut self) -> io::Result<()> {
         let mut terminal = ratatui::init();
-        self.init_modules();
+        self.init_modules().await;
 
         while !self.exit {
-            self.update_modules();
+            self.update_modules().await;
             terminal.draw(|f| self.draw(f))?;
             self.handle_events()?;
         }
@@ -73,16 +75,18 @@ impl App {
         frame.render_widget(self, frame.area());
     }
 
-    fn init_modules(&mut self) {
-        for module in HWModule::init::<HWMon>() {
+    async fn init_modules(&mut self) {
+        let modules = HWModule::init::<HWMon>().await;
+
+        for module in modules {
             self.modules.push(module);
         }
     }
 
-    fn update_modules(&mut self) {
+    async fn update_modules(&mut self) {
         if Instant::now() >= self.last_sensor_refresh + self.sensor_refresh_interval {
             for module in &mut self.modules {
-                module.poll_sensors();
+                module.poll_sensors().await;
             }
 
             self.last_sensor_refresh = Instant::now();
