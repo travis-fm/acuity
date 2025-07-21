@@ -38,7 +38,7 @@ impl HWMon {
         }
     }
 
-    fn init_sensors(&mut self) -> io::Result<()> {
+    async fn init_sensors(&mut self) -> io::Result<()> {
         let string_parse_err = io::Error::other(format!(
             "Could not parse string from path: {}",
             self.hwmon_path.display()
@@ -74,7 +74,10 @@ impl HWMon {
             }
         }
 
-        while tasks.iter().any(|t| !t.is_finished()) {}
+        for task in tasks {
+            task.await.unwrap_or_default();
+        }
+
         self.hwmon_sensors = Arc::into_inner(sensors).unwrap().into_inner();
 
         Ok(())
@@ -102,8 +105,6 @@ impl Module for HWMon {
             }));
         }
 
-        while tasks.iter().any(|t| !t.is_finished()) {}
-
         for (i, task) in tasks.into_iter().enumerate() {
             self.hwmon_sensors[i].sensor.value = task.await.unwrap_or_default();
         }
@@ -127,7 +128,7 @@ impl Module for HWMon {
                             hwmon_sensors: vec![],
                         };
 
-                        hwmon.init_sensors().unwrap_or_default();
+                        hwmon.init_sensors().await.unwrap_or_default();
                         modules.lock().await.push(hwmon);
                     }));
                 }
@@ -137,7 +138,9 @@ impl Module for HWMon {
             }
         }
 
-        while tasks.iter().any(|t| !t.is_finished()) {}
+        for task in tasks {
+            task.await.unwrap_or_default();
+        }
 
         Arc::into_inner(modules).unwrap().into_inner()
     }
