@@ -6,9 +6,10 @@ use std::io;
 
 use crate::app::App;
 
-fn main() -> io::Result<()> {
+#[tokio::main]
+async fn main() -> io::Result<()> {
     let mut app = App::new(None);
-    app.run()?;
+    app.run().await?;
 
     Ok(())
 }
