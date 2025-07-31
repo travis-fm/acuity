@@ -130,6 +130,10 @@ impl App {
         self.exit = true;
     }
 
+    fn push_action(&mut self, action: Action) {
+        self.action_tx.send(action);
+    }
+
     fn handle_event(&mut self, event: &Event) -> Option<Action> {
         match event {
             Event::Crossterm(CrosstermEvent::Key(key_event))
@@ -155,7 +159,10 @@ impl App {
     ) -> Result<()> {
         match action {
             Action::Quit => self.exit(),
-            Action::RefreshSensors => self.refresh_sensors().await,
+            Action::RefreshSensors => {
+                self.refresh_sensors().await;
+                self.push_action(Action::Render);
+            }
             Action::Render => {
                 terminal.draw(|f| f.render_widget(&*self, f.area()))?;
             }
