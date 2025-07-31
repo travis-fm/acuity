@@ -23,7 +23,7 @@ pub trait Module {
     fn name(&self) -> &str;
     fn set_name(&mut self, name: String);
     fn sensors(&self) -> Vec<&Sensor>;
-    async fn poll_sensors(&mut self);
+    async fn refresh_sensors(&mut self);
 }
 
 impl HWModule {
@@ -43,8 +43,8 @@ impl HWModule {
         hwmodules
     }
 
-    pub async fn poll_sensors(&mut self) {
-        self.module.poll_sensors().await;
+    pub async fn refresh_sensors(&mut self) {
+        self.module.refresh_sensors().await;
     }
 
     #[must_use]

@@ -1,22 +1,35 @@
 use std::io;
+use std::option::Option;
 use std::time::{Duration, Instant};
 
-use ratatui::Frame;
+use color_eyre::Result;
+use crossterm::event::{Event as CrosstermEvent, KeyCode, KeyEvent, KeyEventKind, MouseEvent};
 use ratatui::buffer::Buffer;
-use ratatui::crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::symbols::border;
 use ratatui::text::Line;
 use ratatui::widgets::{Block, Widget};
+use ratatui::{DefaultTerminal, Frame};
 
+use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
+
+use crate::event_stream::{Event, EventStream};
 use crate::hwmodule::HWModule;
 use crate::hwmodule::hwmon::HWMon;
+
+pub enum Action {
+    Quit,
+    Render,
+    RefreshSensors,
+}
 
 pub struct App {
     exit: bool,
     modules: Vec<HWModule>,
     sensor_refresh_interval: Duration,
     last_sensor_refresh: Instant,
+    action_tx: UnboundedSender<Action>,
+    action_rx: UnboundedReceiver<Action>,
 }
 
 pub enum AppOptions {
@@ -26,11 +39,19 @@ pub enum AppOptions {
 impl App {
     #[must_use]
     pub fn new(options: Option<Vec<AppOptions>>) -> Self {
+        let exit = false;
+        let modules = vec![];
+        let sensor_refresh_interval = Duration::from_millis(1000);
+        let last_sensor_refresh = Instant::now();
+        let (action_tx, action_rx) = mpsc::unbounded_channel();
+
         let mut app = App {
-            exit: false,
-            modules: vec![],
-            sensor_refresh_interval: Duration::from_millis(1000),
-            last_sensor_refresh: Instant::now(),
+            exit,
+            modules,
+            sensor_refresh_interval,
+            last_sensor_refresh,
+            action_tx,
+            action_rx,
         };
 
         app.load_options(options);
@@ -40,17 +61,33 @@ impl App {
 
     /// # Errors
     /// TODO
-    pub async fn run(&mut self) -> io::Result<()> {
+    pub async fn run(&mut self) -> Result<()> {
         let mut terminal = ratatui::init();
-        self.init_modules().await;
+        let mut event_stream = EventStream::new();
+
+        self.init().await?;
+        terminal.draw(|f| self.draw(f))?;
 
         while !self.exit {
-            self.update_modules().await;
-            terminal.draw(|f| self.draw(f))?;
-            self.handle_events()?;
+            if let Some(e) = event_stream.next().await {
+                self.handle_event(&e)
+                    .map(|action| self.action_tx.send(action));
+            }
+            while let Ok(action) = self.action_rx.try_recv() {
+                self.handle_action(action, &mut terminal).await?;
+                // if matches!(action, Action::Resize(_, _) | Action::Render) {
+                //     tui.draw(|frame| self.render(frame))?;
+                // }
+            }
         }
 
         ratatui::restore();
+
+        Ok(())
+    }
+
+    async fn init(&mut self) -> io::Result<()> {
+        self.init_modules().await;
 
         Ok(())
     }
@@ -83,13 +120,9 @@ impl App {
         }
     }
 
-    async fn update_modules(&mut self) {
-        if Instant::now() >= self.last_sensor_refresh + self.sensor_refresh_interval {
-            for module in &mut self.modules {
-                module.poll_sensors().await;
-            }
-
-            self.last_sensor_refresh = Instant::now();
+    async fn refresh_sensors(&mut self) {
+        for module in &mut self.modules {
+            module.refresh_sensors().await;
         }
     }
 
@@ -97,27 +130,52 @@ impl App {
         self.exit = true;
     }
 
-    fn handle_key_event(&mut self, key_event: KeyEvent) {
-        // Expecting to add more keybindings later on. Leaving default at bottom for future implementations.
-        #[allow(clippy::single_match)]
-        match key_event.code {
-            KeyCode::Char('q') => self.exit(),
-            _ => {}
+    fn handle_event(&mut self, event: &Event) -> Option<Action> {
+        match event {
+            Event::Crossterm(CrosstermEvent::Key(key_event))
+                if key_event.kind == KeyEventKind::Press =>
+            {
+                self.handle_key_event(key_event)
+            }
+            Event::Crossterm(CrosstermEvent::Mouse(mouse_event)) => {
+                self.handle_mouse_event(mouse_event)
+            }
+            Event::SensorRefresh => Some(Action::RefreshSensors),
+            Event::Crossterm(CrosstermEvent::FocusGained | CrosstermEvent::Resize(_, _)) => {
+                Some(Action::Render)
+            }
+            _ => None,
         }
     }
 
-    fn handle_events(&mut self) -> io::Result<()> {
-        if event::poll(Duration::from_secs(0))? {
-            match event::read()? {
-                Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                    self.handle_key_event(key_event);
-                }
-
-                _ => {}
+    async fn handle_action(
+        &mut self,
+        action: Action,
+        terminal: &mut DefaultTerminal,
+    ) -> Result<()> {
+        match action {
+            Action::Quit => self.exit(),
+            Action::RefreshSensors => self.refresh_sensors().await,
+            Action::Render => {
+                terminal.draw(|f| f.render_widget(&*self, f.area()))?;
             }
+            _ => {}
         }
 
         Ok(())
+    }
+
+    fn handle_key_event(&self, key_event: &KeyEvent) -> Option<Action> {
+        // Expecting to add more keybindings later on. Leaving default at bottom for future implementations.
+        #[allow(clippy::single_match)]
+        match key_event.code {
+            KeyCode::Char('q') => Some(Action::Quit),
+            _ => None,
+        }
+    }
+
+    fn handle_mouse_event(&self, mouse_event: &MouseEvent) -> Option<Action> {
+        None
     }
 }
 

@@ -94,7 +94,7 @@ impl HWMon {
 
 #[async_trait]
 impl Module for HWMon {
-    async fn poll_sensors(&mut self) {
+    async fn refresh_sensors(&mut self) {
         let mut tasks = vec![];
 
         for sensor in &self.hwmon_sensors {
