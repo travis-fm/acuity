@@ -1,5 +1,6 @@
 use std::io;
 use std::option::Option;
+use std::sync::Arc;
 use std::time::Duration;
 
 use color_eyre::Result;
@@ -11,8 +12,10 @@ use ratatui::text::Line;
 use ratatui::widgets::{Block, Widget};
 use ratatui::{DefaultTerminal, Frame};
 
+use tokio::sync::Mutex;
 use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
+use tokio::task::JoinSet;
 
 use crate::event_stream::{Event, EventStream};
 use crate::hwmodule::HWModule;
@@ -113,10 +116,30 @@ impl App {
         }
     }
 
-    async fn refresh_sensors(&mut self) {
-        for module in &mut self.modules {
-            module.refresh_sensors().await;
+    async fn refresh_modules(&mut self) {
+        let modules = self
+            .modules
+            .drain(..)
+            .map(|m| Arc::new(Mutex::new(m)))
+            .collect::<Vec<_>>();
+        let mut join_set = JoinSet::new();
+
+        for module in &modules {
+            let module = module.clone();
+
+            join_set.spawn(async move {
+                module.lock().await.refresh_sensors().await;
+            });
         }
+
+        let _ = join_set.join_all().await;
+
+        let mut modules = modules
+            .into_iter()
+            .map(|m| Arc::into_inner(m).unwrap().into_inner())
+            .collect::<Vec<_>>();
+
+        self.modules = std::mem::take(&mut modules);
     }
 
     fn exit(&mut self) {
@@ -157,7 +180,7 @@ impl App {
         match action {
             Action::Quit => self.exit(),
             Action::RefreshSensors => {
-                self.refresh_sensors().await;
+                self.refresh_modules().await;
                 self.push_action(Action::Render);
             }
             Action::Render => {

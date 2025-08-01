@@ -12,7 +12,7 @@ use ratatui::{
 use crate::sensor::Sensor;
 
 pub struct HWModule {
-    module: Box<dyn Module>,
+    module: Box<dyn Module + Send>,
 }
 
 #[async_trait]
@@ -28,7 +28,7 @@ pub trait Module {
 
 impl HWModule {
     #[must_use]
-    pub async fn init<T: Module + 'static>() -> Vec<Self> {
+    pub async fn init<T: Module + Send + 'static>() -> Vec<Self> {
         let modules = T::init().await;
         let mut hwmodules: Vec<HWModule> = vec![];
 
