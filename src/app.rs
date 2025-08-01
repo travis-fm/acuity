@@ -1,6 +1,6 @@
 use std::io;
 use std::option::Option;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use color_eyre::Result;
 use crossterm::event::{Event as CrosstermEvent, KeyCode, KeyEvent, KeyEventKind, MouseEvent};
@@ -11,6 +11,7 @@ use ratatui::text::Line;
 use ratatui::widgets::{Block, Widget};
 use ratatui::{DefaultTerminal, Frame};
 
+use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 
 use crate::event_stream::{Event, EventStream};
@@ -66,18 +67,14 @@ impl App {
 
         while !self.exit {
             if let Some(e) = event_stream.next().await {
-                self.handle_event(&e)
-                    .map(|action| self.action_tx.send(action));
+                if let Some(action) = self.handle_event(&e) {
+                    self.push_action(action);
+                }
             }
-            while let Ok(action) = self.action_rx.try_recv() {
+            while let Ok(action) = self.next_action() {
                 self.handle_action(action, terminal).await?;
-                // if matches!(action, Action::Resize(_, _) | Action::Render) {
-                //     tui.draw(|frame| self.render(frame))?;
-                // }
             }
         }
-
-        ratatui::restore();
 
         Ok(())
     }
@@ -128,6 +125,10 @@ impl App {
 
     fn push_action(&mut self, action: Action) {
         self.action_tx.send(action);
+    }
+
+    fn next_action(&mut self) -> Result<Action, TryRecvError> {
+        self.action_rx.try_recv()
     }
 
     fn handle_event(&mut self, event: &Event) -> Option<Action> {
