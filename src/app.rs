@@ -27,7 +27,6 @@ pub struct App {
     exit: bool,
     modules: Vec<HWModule>,
     sensor_refresh_interval: Duration,
-    last_sensor_refresh: Instant,
     action_tx: UnboundedSender<Action>,
     action_rx: UnboundedReceiver<Action>,
 }
@@ -42,14 +41,12 @@ impl App {
         let exit = false;
         let modules = vec![];
         let sensor_refresh_interval = Duration::from_millis(1000);
-        let last_sensor_refresh = Instant::now();
         let (action_tx, action_rx) = mpsc::unbounded_channel();
 
         let mut app = App {
             exit,
             modules,
             sensor_refresh_interval,
-            last_sensor_refresh,
             action_tx,
             action_rx,
         };
@@ -59,10 +56,9 @@ impl App {
         app
     }
 
-    /// # Errors
-    /// TODO
-    pub async fn run(&mut self) -> Result<()> {
-        let mut terminal = ratatui::init();
+    #[tokio::main]
+    pub async fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<()> {
+        //let mut terminal = ratatui::init();
         let mut event_stream = EventStream::new();
 
         self.init().await?;
@@ -74,7 +70,7 @@ impl App {
                     .map(|action| self.action_tx.send(action));
             }
             while let Ok(action) = self.action_rx.try_recv() {
-                self.handle_action(action, &mut terminal).await?;
+                self.handle_action(action, terminal).await?;
                 // if matches!(action, Action::Resize(_, _) | Action::Render) {
                 //     tui.draw(|frame| self.render(frame))?;
                 // }

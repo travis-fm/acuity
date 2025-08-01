@@ -7,12 +7,11 @@ use color_eyre::Result;
 
 use crate::app::App;
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     color_eyre::install()?;
 
     let mut app = App::new(None);
-    app.run().await?;
+    ratatui::run(|t| app.run(t));
 
     Ok(())
 }
