@@ -9,7 +9,7 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::symbols::border;
 use ratatui::text::Line;
-use ratatui::widgets::{Block, Widget};
+use ratatui::widgets::{Block, StatefulWidget, Widget};
 use ratatui::{DefaultTerminal, Frame};
 
 use tokio::sync::Mutex;
@@ -26,6 +26,8 @@ pub enum Action {
     Render,
     RefreshSensors,
 }
+
+struct AppWidget;
 
 pub struct App {
     exit: bool,
@@ -65,7 +67,7 @@ impl App {
         let mut event_stream = EventStream::new();
 
         self.init().await?;
-        terminal.draw(|f| self.draw(f))?;
+        terminal.draw(|f| self.render(f))?;
 
         while !self.exit {
             if let Some(e) = event_stream.next().await {
@@ -103,8 +105,8 @@ impl App {
         }
     }
 
-    fn draw(&self, frame: &mut Frame) {
-        frame.render_widget(self, frame.area());
+    fn render(&mut self, frame: &mut Frame) {
+        frame.render_stateful_widget(AppWidget, frame.area(), self);
     }
 
     async fn init_modules(&mut self) {
@@ -183,7 +185,7 @@ impl App {
                 self.push_action(Action::Render);
             }
             Action::Render => {
-                terminal.draw(|f| f.render_widget(&*self, f.area()))?;
+                terminal.draw(|f| self.render(f))?;
             }
             _ => {}
         }
@@ -205,8 +207,10 @@ impl App {
     }
 }
 
-impl Widget for &App {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl StatefulWidget for AppWidget {
+    type State = App;
+
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let app_title = Line::from("Acumen Hardware Monitor");
         let app_version = Line::from("v0.0.1-dev");
         let app_block = Block::bordered()
@@ -229,20 +233,20 @@ impl Widget for &App {
         // This is temporary while prototyping. Should smartly generate module cells later when more are added.
         // Ignore cast truncation for now.
         let module_col_size = 100
-            / if self.modules.is_empty() {
+            / if state.modules.is_empty() {
                 1
             } else {
-                self.modules.len()
+                state.modules.len()
             };
         #[allow(clippy::cast_possible_truncation)]
         let module_cols =
-            (0..self.modules.len()).map(|_| Constraint::Percentage(module_col_size as u16));
+            (0..state.modules.len()).map(|_| Constraint::Percentage(module_col_size as u16));
 
         let module_layout = Layout::horizontal(module_cols).spacing(1).split(main_area);
         app_block.render(area, buf);
 
-        for i in 0..self.modules.len() {
-            self.modules[i].render(module_layout[i], buf);
+        for i in 0..state.modules.len() {
+            state.modules[i].render(module_layout[i], buf);
         }
     }
 }
