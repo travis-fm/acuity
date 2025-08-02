@@ -62,7 +62,6 @@ impl App {
 
     #[tokio::main]
     pub async fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<()> {
-        //let mut terminal = ratatui::init();
         let mut event_stream = EventStream::new();
 
         self.init().await?;
