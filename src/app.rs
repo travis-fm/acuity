@@ -20,6 +20,7 @@ use tokio::task::JoinSet;
 use crate::event_stream::{Event, EventStream};
 use crate::hwmodule::HWModule;
 use crate::hwmodule::hwmon::HWMon;
+use crate::view_state::ViewState;
 
 pub enum Action {
     Quit,
@@ -31,6 +32,8 @@ struct AppWidget;
 
 pub struct App {
     exit: bool,
+    event_stream: EventStream,
+    view_state: ViewState,
     modules: Vec<HWModule>,
     sensor_refresh_interval: Duration,
     action_tx: UnboundedSender<Action>,
@@ -45,12 +48,16 @@ impl App {
     #[must_use]
     pub fn new(options: Option<Vec<AppOptions>>) -> Self {
         let exit = false;
+        let view_state = ViewState::new();
+        let event_stream = EventStream::new();
         let modules = vec![];
         let sensor_refresh_interval = Duration::from_millis(1000);
         let (action_tx, action_rx) = mpsc::unbounded_channel();
 
         let mut app = App {
             exit,
+            event_stream,
+            view_state,
             modules,
             sensor_refresh_interval,
             action_tx,
@@ -64,13 +71,10 @@ impl App {
 
     #[tokio::main]
     pub async fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<()> {
-        let mut event_stream = EventStream::new();
-
-        self.init().await?;
-        terminal.draw(|f| self.render(f))?;
+        self.init(terminal).await?;
 
         while !self.exit {
-            if let Some(e) = event_stream.next().await {
+            if let Some(e) = self.event_stream.next().await {
                 if let Some(action) = self.handle_event(&e) {
                     self.push_action(action);
                 }
@@ -83,8 +87,10 @@ impl App {
         Ok(())
     }
 
-    async fn init(&mut self) -> io::Result<()> {
+    async fn init(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+        self.view_state.set_area(terminal.get_frame().area());
         self.init_modules().await;
+        self.push_action(Action::Render);
 
         Ok(())
     }
@@ -185,7 +191,12 @@ impl App {
                 self.push_action(Action::Render);
             }
             Action::Render => {
-                terminal.draw(|f| self.render(f))?;
+                terminal.draw(|f| {
+                    self.render(f);
+                    for module in &mut self.modules {
+                        module.render(f);
+                    }
+                })?;
             }
             _ => {}
         }
@@ -246,7 +257,7 @@ impl StatefulWidget for AppWidget {
         app_block.render(area, buf);
 
         for i in 0..state.modules.len() {
-            state.modules[i].render(module_layout[i], buf);
+            state.modules[i].view_state().set_area(module_layout[i]);
         }
     }
 }

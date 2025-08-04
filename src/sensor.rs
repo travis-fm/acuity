@@ -19,6 +19,9 @@ pub enum SensorType {
     Unknown,
 }
 
+struct ViewState {
+    area: Rect,
+}
 #[derive(Debug)]
 pub struct Sensor {
     pub name: String,

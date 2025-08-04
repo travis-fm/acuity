@@ -2,6 +2,7 @@ pub mod app;
 pub mod event_stream;
 pub mod hwmodule;
 pub mod sensor;
+pub mod view_state;
 
 use color_eyre::Result;
 
