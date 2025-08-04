@@ -37,11 +37,15 @@ pub enum Event {
 impl EventStream {
     pub fn new() -> Self {
         Self {
-            streams: StreamMap::from_iter([
-                (StreamName::SensorRefresh, sensor_refresh_stream()),
-                (StreamName::Crossterm, crossterm_stream()),
-            ]),
+            streams: StreamMap::new(),
         }
+    }
+
+    pub fn init(&mut self) {
+        self.streams = StreamMap::from_iter([
+            (StreamName::SensorRefresh, sensor_refresh_stream()),
+            (StreamName::Crossterm, crossterm_stream()),
+        ]);
     }
 
     pub async fn next(&mut self) -> Option<Event> {

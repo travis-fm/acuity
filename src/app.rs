@@ -90,6 +90,7 @@ impl App {
     async fn init(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         self.view_state.set_area(terminal.get_frame().area());
         self.init_modules().await;
+        self.event_stream.init();
         self.push_action(Action::Render);
 
         Ok(())
