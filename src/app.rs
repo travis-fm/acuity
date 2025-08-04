@@ -195,6 +195,9 @@ impl App {
                     self.render(f);
                     for module in &mut self.modules {
                         module.render(f);
+                        for sensor in module.sensors() {
+                            sensor.render(f);
+                        }
                     }
                 })?;
             }

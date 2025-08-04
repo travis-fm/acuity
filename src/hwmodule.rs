@@ -26,7 +26,7 @@ pub trait Module {
         Self: Sized;
     fn name(&self) -> &str;
     fn set_name(&mut self, name: String);
-    fn sensors(&self) -> Vec<&Sensor>;
+    fn sensors(&mut self) -> Vec<&mut Sensor>;
     async fn refresh_sensors(&mut self);
 }
 
@@ -58,7 +58,7 @@ impl HWModule {
     }
 
     #[must_use]
-    pub fn sensors(&self) -> Vec<&Sensor> {
+    pub fn sensors(&mut self) -> Vec<&mut Sensor> {
         self.module.sensors()
     }
 
@@ -75,10 +75,6 @@ impl StatefulWidget for HWModuleWidget {
     type State = HWModule;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let module_name = Line::from(state.name());
-        let module_block = Block::bordered()
-            .border_set(border::PLAIN)
-            .title(module_name.centered());
         let mut constraints = vec![];
         state
             .module
@@ -86,11 +82,17 @@ impl StatefulWidget for HWModuleWidget {
             .iter()
             .for_each(|_| constraints.push(Constraint::Fill(1)));
 
+        let module_name = Line::from(state.name());
+        let module_block = Block::bordered()
+            .border_set(border::PLAIN)
+            .title(module_name.centered());
+
         let layout = Layout::vertical(constraints).split(module_block.inner(area));
 
         module_block.render(area, buf);
+
         for i in 0..state.module.sensors().len() {
-            state.sensors()[i].render(layout[i], buf);
+            state.sensors()[i].view_state().set_area(layout[i]);
         }
     }
 }

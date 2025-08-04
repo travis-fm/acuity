@@ -153,7 +153,10 @@ impl Module for HWMon {
         self.name = name;
     }
 
-    fn sensors(&self) -> Vec<&Sensor> {
-        self.hwmon_sensors.iter().map(|s| &s.sensor).collect()
+    fn sensors(&mut self) -> Vec<&mut Sensor> {
+        self.hwmon_sensors
+            .iter_mut()
+            .map(|s| &mut s.sensor)
+            .collect::<Vec<_>>()
     }
 }
