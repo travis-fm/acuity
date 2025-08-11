@@ -1,4 +1,4 @@
-# Acumen Hardware Monitor
+# Acuity Hardware Monitor
 
 A WIP TUI-based hardware monitor, with HwInfo64 on Windows as inspiration.
 
