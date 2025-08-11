@@ -1,7 +1,15 @@
 [package]
 name = "acuity"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2024"
+description = "A TUI for monitoring system hardware at a glance."
+repository = "https://github.com/travis-fm/acuity"
+readme = "README.md"
+authors = ["Travis Gibson"]
+license = "MIT"
+license-file = "LICENSE.md"
+keywords = ["hardware", "monitoring", "sensors"]
+categories = ["command-line-utilities"]
 
 [lints.rust]
 unsafe_code = "deny"
