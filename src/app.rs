@@ -226,7 +226,7 @@ impl StatefulWidget for AppWidget {
     type State = App;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let app_title = Line::from("Acumen Hardware Monitor");
+        let app_title = Line::from("Acuity Hardware Monitor");
         let app_version = Line::from("v0.0.1-dev");
         let app_block = Block::bordered()
             .title(app_title.centered())
