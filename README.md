@@ -6,8 +6,6 @@ This is mainly a learning project for me to get more familiar with Rust, but I a
 away at this thing long-term to turn it into a full-featured, easy to use monitor. We'll see how that actually
 goes 😊.
 
-No established crate published yet, but if you're REALLY bored you can clone this repo and run it with `cargo run --release`.
-
 It only supports Linux HWMon-based sensors right now, but next up will be AMD Ryzen CPU sensors.
 
 Overall Goals:
